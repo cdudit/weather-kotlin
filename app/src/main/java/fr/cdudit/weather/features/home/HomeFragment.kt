@@ -39,7 +39,7 @@ class HomeFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        city?.let { this.setupCity(it.name) }
+        this.setupUiWithCity()
     }
 
     private fun setupListeners() {
@@ -60,34 +60,41 @@ class HomeFragment : Fragment() {
 
     private fun setupCity(cityName: String) {
         doIfNetworkAvailable {
+            this.binding.loader.isVisible = true
             viewModel.getWeather(
+                requireContext(),
                 coroutineScope,
                 cityName,
                 onSuccess = {
-                    this@HomeFragment.city = City(
-                        cityName,
-                        this@HomeFragment.viewModel.getLatLng(it.coord, cityName, requireContext()),
-                        it.main?.temp,
-                        it.weather.first().icon
-                    )
+                    this@HomeFragment.city = it
                     requireActivity().runOnUiThread {
+                        this@HomeFragment.binding.loader.isVisible = false
                         this@HomeFragment.setupUiWithCity()
                     }
                 },
                 onError = {
-                    Toast.makeText(requireContext(), it, Toast.LENGTH_LONG).show()
+                    requireActivity().runOnUiThread {
+                        Toast.makeText(
+                            requireContext(),
+                            "An error occurred",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        this@HomeFragment.binding.loader.isVisible = false
+                    }
                 }
             )
         }
     }
 
     private fun setupUiWithCity() {
-        this.binding.cityTitle.text = city?.name
-        city?.degree?.let { this.binding.cityDegree.text = "$it°C" }
-        Glide.with(this)
-            .load("https://openweathermap.org/img/wn/${city?.logo}@2x.png")
-            .into(this.binding.cityWeather)
-        this.binding.buttonWeather.isVisible = true
+        city?.let {
+            this.binding.cityTitle.text = it.name
+            it.degree?.let { degree -> this.binding.cityDegree.text = "$degree°C" }
+            Glide.with(this)
+                .load("https://openweathermap.org/img/wn/${it.logo}@2x.png")
+                .into(this.binding.cityWeather)
+            this.binding.buttonWeather.isVisible = true
+        }
     }
 
     private fun doIfNetworkAvailable(callback: () -> Unit) {
